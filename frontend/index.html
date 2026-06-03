@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Skill Finder</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #0f1117; color: #e1e4e8; min-height: 100vh; padding: 2rem; }
+    h1 { font-size: 1.8rem; margin-bottom: 0.25rem; }
+    .subtitle { color: #8b949e; margin-bottom: 2rem; font-size: 0.95rem; }
+    .search-box { display: flex; gap: 0.5rem; margin-bottom: 2rem; }
+    .search-box input { flex: 1; padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid #30363d; background: #161b22; color: #e1e4e8; font-size: 1rem; }
+    .search-box input:focus { outline: none; border-color: #58a6ff; }
+    .search-box button { padding: 0.75rem 1.5rem; border-radius: 8px; border: none; background: #238636; color: #fff; cursor: pointer; font-size: 1rem; }
+    .search-box button:hover { background: #2ea043; }
+    section { margin-bottom: 2.5rem; }
+    h2 { font-size: 1.1rem; color: #58a6ff; margin-bottom: 1rem; border-bottom: 1px solid #21262d; padding-bottom: 0.5rem; }
+    .card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 1rem; margin-bottom: 0.75rem; }
+    .card h3 { font-size: 1rem; margin-bottom: 0.25rem; }
+    .card h3 a { color: #58a6ff; text-decoration: none; }
+    .card h3 a:hover { text-decoration: underline; }
+    .card p { color: #8b949e; font-size: 0.9rem; line-height: 1.5; }
+    .score { font-size: 0.75rem; color: #3fb950; margin-top: 0.4rem; }
+    .tags { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.5rem; }
+    .tag { background: #21262d; border: 1px solid #30363d; border-radius: 4px; padding: 0.1rem 0.4rem; font-size: 0.75rem; color: #8b949e; }
+    .empty { color: #8b949e; font-style: italic; }
+    #status { color: #f85149; margin-bottom: 1rem; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <h1>Skill Finder</h1>
+  <p class="subtitle">พิมพ์ลักษณะของ skill ที่อยากได้ — ระบบค้นหาด้วย semantic search</p>
+
+  <div class="search-box">
+    <input id="query" type="text" placeholder="เช่น: อ่าน PDF และสรุปให้" autofocus />
+    <button onclick="doSearch()">ค้นหา</button>
+  </div>
+
+  <div id="status"></div>
+
+  <section id="results-section" style="display:none">
+    <h2>ผลการค้นหา</h2>
+    <div id="results"></div>
+  </section>
+
+  <section id="rec-section" style="display:none">
+    <h2>Skill ใหม่ที่คล้ายกับสิ่งที่เคยสนใจ</h2>
+    <div id="recommendations"></div>
+  </section>
+
+  <script>
+    const query = document.getElementById('query');
+    query.addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+
+    async function doSearch() {
+      const q = query.value.trim();
+      if (!q) return;
+      document.getElementById('status').textContent = 'กำลังค้นหา...';
+      try {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&top_k=10`);
+        if (!res.ok) throw new Error(await res.text());
+        const data = await res.json();
+        renderResults(data.results);
+        renderRecommendations(data.recommendations);
+        document.getElementById('status').textContent = '';
+      } catch (e) {
+        document.getElementById('status').textContent = `Error: ${e.message}`;
+      }
+    }
+
+    function renderResults(items) {
+      const sec = document.getElementById('results-section');
+      const el = document.getElementById('results');
+      if (!items.length) { el.innerHTML = '<p class="empty">ไม่พบ skill ที่ตรงกัน</p>'; sec.style.display = 'block'; return; }
+      el.innerHTML = items.map(card).join('');
+      sec.style.display = 'block';
+    }
+
+    function renderRecommendations(items) {
+      const sec = document.getElementById('rec-section');
+      const el = document.getElementById('recommendations');
+      if (!items.length) { sec.style.display = 'none'; return; }
+      el.innerHTML = items.map(card).join('');
+      sec.style.display = 'block';
+    }
+
+    function card(item) {
+      const tags = (item.tags || []).filter(Boolean).map(t => `<span class="tag">${t}</span>`).join('');
+      const link = item.source_url ? `<a href="${item.source_url}" target="_blank">${item.name}</a>` : item.name;
+      return `<div class="card">
+        <h3>${link}</h3>
+        <p>${item.description || '<em>ไม่มีคำอธิบาย</em>'}</p>
+        ${tags ? `<div class="tags">${tags}</div>` : ''}
+        <div class="score">score: ${(item.score * 100).toFixed(1)}%</div>
+      </div>`;
+    }
+
+    // Load recommendations on page load
+    (async () => {
+      try {
+        const res = await fetch('/api/recommendations');
+        if (res.ok) { const data = await res.json(); renderRecommendations(data.recommendations); }
+      } catch (_) {}
+    })();
+  </script>
+</body>
+</html>
