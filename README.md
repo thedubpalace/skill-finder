@@ -13,7 +13,7 @@ Standalone web app: พิมพ์ลักษณะของ skill ที่�
 
 ## Stack
 
-- **Backend**: Python 3.11+ / FastAPI + uvicorn
+- **Backend**: Python 3.11–3.13 / FastAPI + uvicorn (3.13 recommended — `faiss-cpu` + `sentence-transformers` ship prebuilt wheels for it; 3.14 may lack wheels)
 - **Storage**: SQLite (async via aiosqlite + SQLAlchemy 2)
 - **Vector search**: FAISS (in-process) + sentence-transformers (`all-MiniLM-L6-v2`, runs locally, no API key needed)
   - Switchable to OpenAI `text-embedding-3-small` via `EMBEDDING_BACKEND=openai`
@@ -72,4 +72,6 @@ FastAPI /api/search
 
 ## Project status
 
-`requirementsReady: false` — awaiting requirements-analyst to formalize full spec before developer phase.
+`developed` — requirements + design spec implemented. Backend (search, recommendations, admin,
+crawler, FAISS index) and frontend (full design-spec UI) complete; seeded with 210 skills from
+GitHub + VS Code Marketplace.

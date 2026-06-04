@@ -19,10 +19,16 @@ def _index_path() -> Path:
     return Path(settings.index_path)
 
 
+def _ids_path() -> Path:
+    # data/faiss.index -> data/faiss.index.ids.json (append, do NOT replace suffix)
+    p = _index_path()
+    return p.with_name(p.name + ".ids.json")
+
+
 def load_index():
     global _index, _id_map
     p = _index_path()
-    map_p = p.with_suffix(".ids.json")
+    map_p = _ids_path()
     if p.exists() and map_p.exists():
         _index = faiss.read_index(str(p))
         _id_map = json.loads(map_p.read_text())
@@ -47,7 +53,7 @@ def _save_index():
     p = _index_path()
     p.parent.mkdir(parents=True, exist_ok=True)
     faiss.write_index(_index, str(p))
-    p.with_suffix(".ids.json").write_text(json.dumps(_id_map))
+    _ids_path().write_text(json.dumps(_id_map))
 
 
 def search(query: str, top_k: int = 10) -> list[tuple[int, float]]:

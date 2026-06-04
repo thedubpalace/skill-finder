@@ -6,7 +6,7 @@ from pathlib import Path
 
 from app.database import init_db
 from app.services.index import load_index
-from app.routers import search, admin
+from app.routers import search, admin, recommendations
 from app.config import settings
 
 
@@ -23,6 +23,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="skill-finder", version="0.1.0", lifespan=lifespan)
 
 app.include_router(search.router)
+app.include_router(recommendations.router)
 app.include_router(admin.router)
 
 # Serve frontend

@@ -11,5 +11,5 @@ build/
 venv/
 data/skills.db
 data/faiss.index
-data/faiss.ids.json
+data/faiss.index.ids.json
 .DS_Store

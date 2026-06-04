@@ -44,7 +44,9 @@ async def get_recommendations(db: AsyncSession, limit: int = 5) -> list[dict]:
             "id": sid,
             "name": skills[sid].name,
             "description": skills[sid].description,
+            "source": skills[sid].source,
             "source_url": skills[sid].source_url,
+            "tags": skills[sid].tags.split(",") if skills[sid].tags else [],
             "score": score,
         }
         for sid, score in fresh

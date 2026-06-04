@@ -58,9 +58,3 @@ async def get_skill(skill_id: int, db: AsyncSession = Depends(get_db)):
         from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="Skill not found")
     return skill
-
-
-@router.get("/recommendations")
-async def recommendations(db: AsyncSession = Depends(get_db)):
-    """Proactive — skill ใหม่ที่คล้ายกับสิ่งที่เคยสนใจ."""
-    return {"recommendations": await get_recommendations(db, limit=10)}
