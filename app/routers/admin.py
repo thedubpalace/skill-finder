@@ -11,8 +11,18 @@ async def trigger_crawl(background_tasks: BackgroundTasks, db: AsyncSession = De
     """Start a background crawl of all configured sources."""
     from crawler.github_crawler import crawl_github
     from crawler.marketplace_crawler import crawl_marketplace
+    from crawler.hn_crawler import crawl_hn
+    from crawler.npm_crawler import crawl_npm
+    from crawler.pypi_crawler import crawl_pypi
+    from crawler.reddit_crawler import crawl_reddit
+    from crawler.youtube_crawler import crawl_youtube
     background_tasks.add_task(crawl_github, db)
     background_tasks.add_task(crawl_marketplace, db)
+    background_tasks.add_task(crawl_hn, db)
+    background_tasks.add_task(crawl_npm, db)
+    background_tasks.add_task(crawl_pypi, db)
+    background_tasks.add_task(crawl_reddit, db)
+    background_tasks.add_task(crawl_youtube, db)
     return {"status": "crawl started"}
 
 

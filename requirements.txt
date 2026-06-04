@@ -18,8 +18,10 @@ faiss-cpu>=1.8.0
 
 # --- Crawler / HTTP ---
 httpx>=0.27.0
-beautifulsoup4>=4.12.0
+beautifulsoup4>=4.12.0          # PyPI search-page scrape
 lxml>=5.2.0
+# YouTube Data API v3 — crawler calls the REST endpoint via httpx, so this is optional.
+# Install if you prefer the official client: google-api-python-client>=2.130.0
 
 # --- Scheduling / rate-limit ---
 tenacity>=8.3.0
