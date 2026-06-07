@@ -801,7 +801,7 @@
       setStatus('loading', 'กำลังค้นหา…');
 
       try {
-        const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&top_k=10`);
+        const res = await fetch(`api/search?q=${encodeURIComponent(q)}&top_k=10`);
         if (!res.ok) throw new Error(`${res.status}`);
         const data = await res.json();
 
@@ -831,7 +831,7 @@
     async function loadRecommendations() {
       let skeletonTimer = setTimeout(() => recoSkeleton(3), 200);
       try {
-        const res = await fetch('/api/recommendations');
+        const res = await fetch('api/recommendations');
         clearTimeout(skeletonTimer);
         if (!res.ok) throw new Error();
         const data = await res.json();
@@ -845,7 +845,7 @@
     // ---------- health ----------
     async function checkHealth() {
       try {
-        const res = await fetch('/health', { cache: 'no-store' });
+        const res = await fetch('health', { cache: 'no-store' });
         const ok = res.ok && (await res.json()).status === 'ok';
         els.healthDot.className = 'status-dot ' + (ok ? 'online' : 'offline');
         els.healthLabel.textContent = ok ? 'online' : 'offline';
@@ -885,10 +885,10 @@
       els.refreshBtn.disabled = true;
       els.refreshLabel.textContent = 'กำลัง crawl…';
       try {
-        await fetch('/admin/crawl', { method: 'POST' });
+        await fetch('admin/crawl', { method: 'POST' });
         // crawl returns immediately (background task) — give it a moment before rebuild
         await new Promise(r => setTimeout(r, 2000));
-        const res = await fetch('/admin/rebuild-index', { method: 'POST' });
+        const res = await fetch('admin/rebuild-index', { method: 'POST' });
         if (!res.ok) throw new Error(`${res.status}`);
         const data = await res.json();
         els.adminStat.textContent = `Skills in DB: ${data.skill_count}`;
