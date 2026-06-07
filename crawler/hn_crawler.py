@@ -15,11 +15,10 @@ from app.models.skill import Skill
 HN_API = "http://hn.algolia.com/api/v1/search"
 
 KEYWORDS = [
-    "Show HN AI tool",
-    "Show HN MCP",
-    "Show HN LLM tool",
-    "Show HN Claude",
-    "Show HN agent",
+    "Show HN claude code",
+    "Show HN claude skill",
+    "Show HN claude agent",
+    "claude code plugin",
 ]
 
 

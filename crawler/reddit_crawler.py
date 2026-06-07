@@ -14,9 +14,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.models.skill import Skill
 
-SUBREDDITS = ["ClaudeAI", "MachineLearning", "LangChain", "artificial", "AIAssistants"]
+SUBREDDITS = ["ClaudeAI", "ClaudeCode"]
 
-KEYWORDS = ["tool", "plugin", "extension", "library", "framework", "mcp", "agent"]
+KEYWORDS = ["skill", "plugin", "agent", "tool", "extension", "slash command"]
 
 
 @retry(

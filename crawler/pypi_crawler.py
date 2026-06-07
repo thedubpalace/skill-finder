@@ -74,7 +74,12 @@ async def _fetch_classifiers(client: httpx.AsyncClient, name: str) -> str:
 
 
 async def crawl_pypi(db: AsyncSession):
-    """Scrape PyPI search results and upsert packages into DB."""
+    """Disabled — PyPI packages are not Claude Code skills."""
+    print("[pypi_crawler] skipped — not relevant for Claude Code skills")
+    return
+
+
+async def _crawl_pypi_disabled(db: AsyncSession):
     async with httpx.AsyncClient(follow_redirects=True) as client:
         for keyword in KEYWORDS:
             try:

@@ -55,6 +55,5 @@ async def _crawl_vscode(db: AsyncSession):
 
 
 async def crawl_marketplace(db: AsyncSession):
-    await _crawl_vscode(db)
-    # TODO: add npm / PyPI crawlers here
-    print("[marketplace_crawler] done")
+    print("[marketplace_crawler] skipped — not relevant for Claude Code skills")
+    return

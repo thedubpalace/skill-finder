@@ -53,7 +53,12 @@ async def _search_keyword(client: httpx.AsyncClient, keyword: str, key: str, max
 
 
 async def crawl_youtube(db: AsyncSession):
-    """Fetch YouTube videos via Data API v3 and upsert into DB. No-op without API key."""
+    """Disabled — YouTube videos are not Claude Code skills."""
+    print("[youtube_crawler] skipped — not relevant for Claude Code skills")
+    return
+
+
+async def _crawl_youtube_disabled(db: AsyncSession):
     key = _api_key()
     if not key:
         print("[youtube_crawler] YOUTUBE_API_KEY not set — skipping YouTube crawl")

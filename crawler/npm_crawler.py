@@ -33,7 +33,12 @@ async def _fetch_keyword(client: httpx.AsyncClient, keyword: str, size: int = 50
 
 
 async def crawl_npm(db: AsyncSession):
-    """Fetch npm packages from the registry search API and upsert into DB."""
+    """Disabled — npm packages are not Claude Code skills."""
+    print("[npm_crawler] skipped — not relevant for Claude Code skills")
+    return
+
+
+async def _crawl_npm_disabled(db: AsyncSession):
     async with httpx.AsyncClient() as client:
         for keyword in KEYWORDS:
             try:
