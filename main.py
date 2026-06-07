@@ -1,3 +1,4 @@
+import asyncio
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -6,6 +7,7 @@ from pathlib import Path
 
 from app.database import init_db
 from app.services.index import load_index
+from app.services.embeddings import _load_model
 from app.routers import search, admin, recommendations
 from app.config import settings
 
@@ -16,6 +18,8 @@ async def lifespan(app: FastAPI):
     Path(settings.db_path).parent.mkdir(parents=True, exist_ok=True)
     await init_db()
     load_index()
+    # Pre-load embedding model so first search request is instant
+    await asyncio.get_running_loop().run_in_executor(None, _load_model)
     yield
     # Shutdown — nothing to clean up
 
