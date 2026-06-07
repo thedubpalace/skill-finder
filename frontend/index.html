@@ -392,6 +392,23 @@
     }
     .card-description.empty { font-style: italic; color: var(--color-text-faint); }
 
+    .platform-badges {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+      margin-top: 6px;
+      margin-bottom: var(--space-2);
+    }
+    .platform-badge {
+      font-size: 10px;
+      font-weight: 500;
+      padding: 1px 7px;
+      border-radius: 3px;
+      border: 1px solid;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+    }
+
     .card-tags {
       display: flex;
       flex-wrap: wrap;
@@ -705,6 +722,25 @@
     els.input.addEventListener('input', applyBtnActive);
 
     // ---------- rendering ----------
+    const PLATFORM_MAP = {
+      'claude-code': { label: 'Claude Code', color: 'oklch(72% 0.155 75)' },
+      'gemini':      { label: 'Gemini',      color: 'oklch(65% 0.14 185)' },
+      'cursor':      { label: 'Cursor',      color: 'oklch(65% 0.14 310)' },
+      'codex':       { label: 'Codex',       color: 'oklch(65% 0.14 250)' },
+    };
+
+    function platformBadgesHtml(platformStr) {
+      if (!platformStr) return '';
+      const badges = String(platformStr).split(',')
+        .map(p => p.trim())
+        .filter(p => PLATFORM_MAP[p])
+        .map(p => {
+          const m = PLATFORM_MAP[p];
+          return `<span class="platform-badge" style="border-color:${m.color};color:${m.color}">${escapeHtml(m.label)}</span>`;
+        });
+      return badges.length ? `<div class="platform-badges">${badges.join('')}</div>` : '';
+    }
+
     function skillCardHtml(item, i) {
       const score = Number(item.score) || 0;
       const pct = Math.round(score * 100);
@@ -736,6 +772,7 @@
         </div>
         ${name}
         <p class="${descClass}">${descText}</p>
+        ${platformBadgesHtml(item.platform)}
         ${tags.length ? `<div class="card-tags">${tagsHtml}</div>` : ''}
       </article>`;
     }

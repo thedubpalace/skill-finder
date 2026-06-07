@@ -33,10 +33,18 @@ from app.models.skill import Skill
 GITHUB_API = "https://api.github.com"
 
 # Code Search queries — find the actual skill/agent Markdown files.
+# Claude-Code-native skill files (platform: claude-code only).
 CODE_QUERIES = [
     "path:.claude/skills extension:md",
     "path:.claude/agents extension:md",
 ]
+
+# Cross-platform SKILL.md files (UiPath-style) — run on any agent.
+CROSS_PLATFORM_QUERIES = [
+    "filename:SKILL.md path:skills",
+]
+
+ALL_PLATFORMS = "claude-code,gemini,cursor,codex"
 
 # Repository Search — repos tagged with Claude Code topics.
 TOPIC_QUERIES = [
@@ -150,7 +158,14 @@ async def _fetch_raw(client: httpx.AsyncClient, download_url: str) -> str:
 
 # --- crawl helpers -----------------------------------------------------------
 
-async def _crawl_code_query(client: httpx.AsyncClient, db: AsyncSession, query: str):
+async def _crawl_code_query(
+    client: httpx.AsyncClient,
+    db: AsyncSession,
+    query: str,
+    category: str = "claude-code-skill",
+    platform: str = "claude-code",
+    tag_prefix: str = "claude-code,skill",
+):
     try:
         items = await _code_search(client, query)
     except Exception as e:
@@ -195,8 +210,9 @@ async def _crawl_code_query(client: httpx.AsyncClient, db: AsyncSession, query: 
             description=description,
             source="github",
             source_url=html_url,
-            category="claude-code-skill",
-            tags=f"claude-code,skill,{repo_name}" if repo_name else "claude-code,skill",
+            category=category,
+            tags=f"{tag_prefix},{repo_name}" if repo_name else tag_prefix,
+            platform=platform,
         )
         db.add(skill)
 
@@ -228,6 +244,7 @@ async def _crawl_topic_query(client: httpx.AsyncClient, db: AsyncSession, topic:
             source_url=html_url,
             category="claude-code-skill",
             tags=f"claude-code,skill,{repo_name}" if repo_name else "claude-code,skill",
+            platform="claude-code",
         )
         db.add(skill)
 
@@ -239,6 +256,13 @@ async def crawl_github(db: AsyncSession):
     async with httpx.AsyncClient(follow_redirects=True) as client:
         for query in CODE_QUERIES:
             await _crawl_code_query(client, db, query)
+        for query in CROSS_PLATFORM_QUERIES:
+            await _crawl_code_query(
+                client, db, query,
+                category="cross-platform-skill",
+                platform=ALL_PLATFORMS,
+                tag_prefix="cross-platform,skill",
+            )
         for topic in TOPIC_QUERIES:
             await _crawl_topic_query(client, db, topic)
     print("[github_crawler] done")

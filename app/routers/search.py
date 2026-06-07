@@ -39,6 +39,7 @@ async def search_skills(
             "source": skills[sid].source,
             "source_url": skills[sid].source_url,
             "tags": skills[sid].tags.split(",") if skills[sid].tags else [],
+            "platform": skills[sid].platform or "",
             "score": score_map[sid],
         }
         for sid in skill_ids
