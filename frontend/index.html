@@ -367,6 +367,16 @@
       text-align: right;
     }
 
+    .skill-meta {
+      font-size: var(--text-xs);
+      color: var(--color-text-faint);
+      font-family: var(--mono-font);
+      display: flex;
+      gap: var(--space-3);
+      margin-top: var(--space-2);
+      flex-wrap: wrap;
+    }
+
     .card-name {
       display: block;
       font-size: var(--text-lg);
@@ -742,9 +752,9 @@
     }
 
     function skillCardHtml(item, i) {
-      const score = Number(item.score) || 0;
-      const pct = Math.round(score * 100);
-      const colorVar = scoreColorVar(score);
+      const rating = Number(item.rating) || Number(item.score) || 0;
+      const ratingPct = Math.round(rating * 100);
+      const colorVar = scoreColorVar(rating);
       const src = sourceClass(item.source);
       const tags = (item.tags || []).filter(Boolean);
       const shown = tags.slice(0, 5);
@@ -760,18 +770,33 @@
         ? `<a class="card-name" href="${escapeHtml(item.source_url)}" target="_blank" rel="noopener">${escapeHtml(item.name)}</a>`
         : `<span class="card-name">${escapeHtml(item.name)}</span>`;
 
+      // popularity / freshness metadata
+      const metaParts = [];
+      if (item.stars > 0) metaParts.push(`★ ${item.stars.toLocaleString()}`);
+      if (item.forks  > 0) metaParts.push(`⑂ ${item.forks.toLocaleString()}`);
+      if (item.last_pushed) {
+        const months = Math.floor((Date.now() - new Date(item.last_pushed)) / (1000*60*60*24*30));
+        metaParts.push(months === 0 ? 'updated this month'
+                     : months < 12 ? `updated ${months}mo ago`
+                     : `updated ${Math.floor(months/12)}y ago`);
+      }
+      const metaHtml = metaParts.length
+        ? `<div class="skill-meta">${metaParts.map(p => `<span>${escapeHtml(p)}</span>`).join('')}</div>`
+        : '';
+
       const delay = REDUCED_MOTION ? 0 : Math.min(i * 30, 150);
 
       return `<article class="skill-card card-appear" style="--stagger-delay:${delay}ms">
         <div class="card-top">
           <span class="source-badge ${src}">${escapeHtml(item.source || 'web')}</span>
           <div class="score-wrap">
-            <span class="score-bar"><span class="score-fill" style="width:${pct}%;background:var(${colorVar})"></span></span>
-            <span class="score-pct" style="color:var(${colorVar})">${pct}%</span>
+            <span class="score-bar"><span class="score-fill" style="width:${ratingPct}%;background:var(${colorVar})"></span></span>
+            <span class="score-pct" style="color:var(${colorVar})">${ratingPct}%</span>
           </div>
         </div>
         ${name}
         <p class="${descClass}">${descText}</p>
+        ${metaHtml}
         ${platformBadgesHtml(item.platform)}
         ${tags.length ? `<div class="card-tags">${tagsHtml}</div>` : ''}
       </article>`;

@@ -25,3 +25,11 @@ async def init_db():
             await conn.execute(text("ALTER TABLE skills ADD COLUMN platform TEXT DEFAULT ''"))
         except Exception:
             pass  # column already exists
+
+    # Add popularity / freshness columns if not exists
+    async with engine.begin() as conn:
+        for col_def in ["stars INTEGER DEFAULT 0", "forks INTEGER DEFAULT 0", "last_pushed TIMESTAMP"]:
+            try:
+                await conn.execute(text(f"ALTER TABLE skills ADD COLUMN {col_def}"))
+            except Exception:
+                pass  # column already exists

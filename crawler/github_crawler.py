@@ -23,6 +23,7 @@ Auth: set GITHUB_TOKEN in .env to raise the Code Search limit from
 from __future__ import annotations
 import asyncio
 import re
+from datetime import datetime, timezone
 import httpx
 from tenacity import retry, wait_exponential, stop_after_attempt, retry_if_exception_type
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -156,6 +157,33 @@ def _headers() -> dict:
     return h
 
 
+def _parse_github_date(s: str | None):
+    if not s:
+        return None
+    try:
+        return datetime.fromisoformat(s.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+# Cache repo meta (stars/forks/pushed_at) to avoid re-fetching the same repo.
+_repo_meta_cache: dict[str, dict] = {}
+
+
+async def _get_repo_meta(client, repo_full_name: str) -> dict:
+    if repo_full_name not in _repo_meta_cache:
+        try:
+            resp = await client.get(
+                f"{GITHUB_API}/repos/{repo_full_name}",
+                headers=_headers(), timeout=15.0
+            )
+            _repo_meta_cache[repo_full_name] = resp.json() if resp.status_code == 200 else {}
+        except Exception:
+            _repo_meta_cache[repo_full_name] = {}
+        await asyncio.sleep(REQUEST_DELAY)
+    return _repo_meta_cache[repo_full_name]
+
+
 @retry(
     retry=retry_if_exception_type(httpx.HTTPStatusError),
     wait=wait_exponential(multiplier=1, min=4, max=60),
@@ -248,6 +276,8 @@ async def _crawl_code_query(
 
         name, description = _parse_frontmatter(content, fallback_name)
 
+        meta = await _get_repo_meta(client, repo_name) if repo_name else {}
+
         skill = Skill(
             name=name,
             description=description,
@@ -256,6 +286,9 @@ async def _crawl_code_query(
             category=category,
             tags=f"{tag_prefix},{repo_name}" if repo_name else tag_prefix,
             platform=platform,
+            stars=meta.get("stargazers_count") or 0,
+            forks=meta.get("forks_count") or 0,
+            last_pushed=_parse_github_date(meta.get("pushed_at")),
         )
         db.add(skill)
 
@@ -288,6 +321,9 @@ async def _crawl_topic_query(client: httpx.AsyncClient, db: AsyncSession, topic:
             category="claude-code-skill",
             tags=f"claude-code,skill,{repo_name}" if repo_name else "claude-code,skill",
             platform="claude-code",
+            stars=item.get("stargazers_count") or 0,
+            forks=item.get("forks_count") or 0,
+            last_pushed=_parse_github_date(item.get("pushed_at")),
         )
         db.add(skill)
 
@@ -307,6 +343,11 @@ async def _crawl_curated_repo(client: httpx.AsyncClient, db: AsyncSession, entry
     category = entry.get("category", "cross-platform-skill")
     tag_prefix = entry.get("tag_prefix", f"cross-platform,skill,{repo.split('/')[0]}")
 
+    meta = await _get_repo_meta(client, repo)
+    repo_stars = meta.get("stargazers_count") or 0
+    repo_forks = meta.get("forks_count") or 0
+    repo_pushed = _parse_github_date(meta.get("pushed_at"))
+
     if entry.get("type") == "single":
         skill_path = entry["skill_path"]
         html_url = f"https://github.com/{repo}/blob/main/{skill_path}"
@@ -325,7 +366,8 @@ async def _crawl_curated_repo(client: httpx.AsyncClient, db: AsyncSession, entry
         name, description = _parse_frontmatter(content, fallback)
         db.add(Skill(name=name, description=description, source="github",
                      source_url=html_url, category=category,
-                     tags=f"{tag_prefix},{fallback}", platform=platform))
+                     tags=f"{tag_prefix},{fallback}", platform=platform,
+                     stars=repo_stars, forks=repo_forks, last_pushed=repo_pushed))
         await db.commit()
         print(f"[github_crawler] curated {repo}: indexed 1 skill")
         return
@@ -367,7 +409,8 @@ async def _crawl_curated_repo(client: httpx.AsyncClient, db: AsyncSession, entry
             name, description = _parse_frontmatter(content, folder_name)
             db.add(Skill(name=name, description=description, source="github",
                          source_url=html_url, category=category,
-                         tags=f"{tag_prefix},{folder_name}", platform=platform))
+                         tags=f"{tag_prefix},{folder_name}", platform=platform,
+                         stars=repo_stars, forks=repo_forks, last_pushed=repo_pushed))
             total += 1
 
     await db.commit()
@@ -390,4 +433,5 @@ async def crawl_github(db: AsyncSession):
             await _crawl_topic_query(client, db, topic)
         for entry in CURATED_REPOS:
             await _crawl_curated_repo(client, db, entry)
+    _repo_meta_cache.clear()
     print("[github_crawler] done")

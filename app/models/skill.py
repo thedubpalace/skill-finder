@@ -15,6 +15,9 @@ class Skill(Base):
     tags = Column(Text, default="")                      # comma-separated
     platform = Column(Text, default="")                  # comma-separated: "claude-code", "gemini", "cursor", "codex"
     embedding_id = Column(Integer, nullable=True)        # row index in FAISS index
+    stars = Column(Integer, default=0)
+    forks = Column(Integer, default=0)
+    last_pushed = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 

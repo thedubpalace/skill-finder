@@ -5,6 +5,7 @@ from app.database import get_db
 from app.models.skill import Skill, UserInterest
 from app.services.index import search
 from app.services.recommender import get_recommendations
+from app.services.scoring import composite_rating
 
 router = APIRouter(prefix="/api", tags=["search"])
 
@@ -41,10 +42,21 @@ async def search_skills(
             "tags": skills[sid].tags.split(",") if skills[sid].tags else [],
             "platform": skills[sid].platform or "",
             "score": score_map[sid],
+            "stars": skills[sid].stars or 0,
+            "forks": skills[sid].forks or 0,
+            "last_pushed": skills[sid].last_pushed.isoformat() if skills[sid].last_pushed else None,
+            "rating": composite_rating(
+                score_map[sid],
+                skills[sid].stars or 0,
+                skills[sid].forks or 0,
+                skills[sid].last_pushed,
+            ),
         }
         for sid in skill_ids
         if sid in skills
     ]
+
+    results.sort(key=lambda x: x["rating"], reverse=True)
 
     recommendations = await get_recommendations(db, limit=5)
 

@@ -1,0 +1,26 @@
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Crawling GitHub...
+[github_crawler] code query='path:.claude/skills extension:md' error: RetryError[<Future at 0x18d792488a0 state=finished raised HTTPStatusError>]
+[github_crawler] code query='path:.claude/agents extension:md' error: RetryError[<Future at 0x18d791a3150 state=finished raised HTTPStatusError>]
+[github_crawler] code query='filename:SKILL.md path:skills' error: RetryError[<Future at 0x18d791e9300 state=finished raised HTTPStatusError>]
+[github_crawler] curated uipath/skills: indexed 21 skills
+[github_crawler] curated microsoft/skills: indexed 183 skills
+[github_crawler] curated eugeniughelbur/obsidian-second-brain: indexed 1 skill
+[github_crawler] done
+Crawling marketplaces...
+[marketplace_crawler] skipped — not relevant for Claude Code skills
+Crawling Hacker News...
+[hn_crawler] done
+Crawling npm...
+[npm_crawler] skipped — not relevant for Claude Code skills
+Crawling PyPI...
+[pypi_crawler] skipped — not relevant for Claude Code skills
+Crawling Reddit...
+[reddit_crawler] subreddit='ClaudeAI' error: RetryError[<Future at 0x18d7965d8d0 state=finished raised HTTPStatusError>]
+[reddit_crawler] subreddit='ClaudeCode' error: RetryError[<Future at 0x18d7965f7d0 state=finished raised HTTPStatusError>]
+[reddit_crawler] done
+Crawling YouTube...
+[youtube_crawler] skipped — not relevant for Claude Code skills
+Rebuilding FAISS index...
+Loading weights:   0%|          | 0/103 [00:00<?, ?it/s]Loading weights: 100%|##########| 103/103 [00:00<00:00, 19336.38it/s]
+Done — 435 skills indexed.
