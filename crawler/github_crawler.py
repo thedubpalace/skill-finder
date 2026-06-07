@@ -47,15 +47,45 @@ CROSS_PLATFORM_QUERIES = [
 ALL_PLATFORMS = "claude-code,gemini,cursor,codex"
 
 # Curated repos — crawled unconditionally regardless of topics/search.
-# Each entry lists a repo and the directory structure for finding skill files.
+#
+# Two entry types:
+#   type "multi"  (default) — list each dir in skills_dirs, treat subdirs as
+#                             individual skills containing skill_file.
+#   type "single" — fetch one skill_path file from the repo root.
 CURATED_REPOS = [
     {
         "repo": "uipath/skills",
-        "skills_dir": "skills",       # list this directory for skill subfolders
-        "skill_file": "SKILL.md",     # filename inside each subfolder
+        "skills_dirs": ["skills"],
+        "skill_file": "SKILL.md",
         "platform": ALL_PLATFORMS,
         "category": "cross-platform-skill",
         "tag_prefix": "cross-platform,skill,uipath",
+    },
+    {
+        "repo": "microsoft/skills",
+        "skills_dirs": [
+            ".github/skills",
+            ".github/plugins/azure-sdk-python/skills",
+            ".github/plugins/azure-sdk-dotnet/skills",
+            ".github/plugins/azure-sdk-typescript/skills",
+            ".github/plugins/azure-sdk-java/skills",
+            ".github/plugins/azure-sdk-rust/skills",
+            ".github/plugins/azure-skills/skills",
+            ".github/plugins/deep-wiki/skills",
+            ".github/plugins/microsoft-foundry/skills",
+        ],
+        "skill_file": "SKILL.md",
+        "platform": ALL_PLATFORMS,
+        "category": "cross-platform-skill",
+        "tag_prefix": "cross-platform,skill,microsoft",
+    },
+    {
+        "repo": "eugeniughelbur/obsidian-second-brain",
+        "type": "single",
+        "skill_path": "SKILL.md",
+        "platform": ALL_PLATFORMS,
+        "category": "cross-platform-skill",
+        "tag_prefix": "cross-platform,skill,obsidian",
     },
 ]
 
@@ -265,60 +295,83 @@ async def _crawl_topic_query(client: httpx.AsyncClient, db: AsyncSession, topic:
 
 
 async def _crawl_curated_repo(client: httpx.AsyncClient, db: AsyncSession, entry: dict):
-    """Fetch every skill file from a known repo using the Contents API."""
+    """Fetch skill files from a known repo using the Contents API.
+
+    Supports two modes:
+      multi  (default) — each dir in skills_dirs is listed; subdirectories are
+                         treated as individual skills containing skill_file.
+      single           — fetch one skill_path file directly from the repo root.
+    """
     repo = entry["repo"]
-    skills_dir = entry["skills_dir"]
-    skill_file = entry["skill_file"]
     platform = entry.get("platform", "claude-code")
     category = entry.get("category", "cross-platform-skill")
-    tag_prefix = entry.get("tag_prefix", f"cross-platform,skill,{repo}")
+    tag_prefix = entry.get("tag_prefix", f"cross-platform,skill,{repo.split('/')[0]}")
 
-    # List skill subdirectories
-    try:
-        resp = await client.get(
-            f"{GITHUB_API}/repos/{repo}/contents/{skills_dir}",
-            headers=_headers(), timeout=20.0,
-        )
-        resp.raise_for_status()
-        entries = resp.json()
-    except Exception as e:
-        print(f"[github_crawler] curated {repo}/{skills_dir} error: {e}")
-        return
-    await asyncio.sleep(REQUEST_DELAY)
-
-    dirs = [e for e in entries if isinstance(e, dict) and e.get("type") == "dir"]
-    print(f"[github_crawler] curated {repo}: found {len(dirs)} skill folders")
-
-    for d in dirs:
-        folder_name = d.get("name") or ""
-        html_url = f"https://github.com/{repo}/blob/main/{skills_dir}/{folder_name}/{skill_file}"
-
+    if entry.get("type") == "single":
+        skill_path = entry["skill_path"]
+        html_url = f"https://github.com/{repo}/blob/main/{skill_path}"
         existing = await db.execute(select(Skill).where(Skill.source_url == html_url))
         if existing.scalar_one_or_none():
-            continue
-
-        raw_url = f"https://raw.githubusercontent.com/{repo}/main/{skills_dir}/{folder_name}/{skill_file}"
+            print(f"[github_crawler] curated {repo}: already indexed")
+            return
+        raw_url = f"https://raw.githubusercontent.com/{repo}/main/{skill_path}"
         try:
             content = await _fetch_raw(client, raw_url)
         except Exception as e:
-            print(f"[github_crawler] curated fetch {raw_url} error: {e}")
+            print(f"[github_crawler] curated single {raw_url} error: {e}")
+            return
+        await asyncio.sleep(REQUEST_DELAY)
+        fallback = repo.split("/")[1]
+        name, description = _parse_frontmatter(content, fallback)
+        db.add(Skill(name=name, description=description, source="github",
+                     source_url=html_url, category=category,
+                     tags=f"{tag_prefix},{fallback}", platform=platform))
+        await db.commit()
+        print(f"[github_crawler] curated {repo}: indexed 1 skill")
+        return
+
+    # multi mode
+    skill_file = entry.get("skill_file", "SKILL.md")
+    skills_dirs = entry.get("skills_dirs") or [entry.get("skills_dir", "skills")]
+    total = 0
+
+    for skills_dir in skills_dirs:
+        try:
+            resp = await client.get(
+                f"{GITHUB_API}/repos/{repo}/contents/{skills_dir}",
+                headers=_headers(), timeout=20.0,
+            )
+            resp.raise_for_status()
+            dir_entries = resp.json()
+        except Exception as e:
+            print(f"[github_crawler] curated {repo}/{skills_dir} error: {e}")
             await asyncio.sleep(REQUEST_DELAY)
             continue
         await asyncio.sleep(REQUEST_DELAY)
 
-        name, description = _parse_frontmatter(content, folder_name)
-        skill = Skill(
-            name=name,
-            description=description,
-            source="github",
-            source_url=html_url,
-            category=category,
-            tags=f"{tag_prefix},{folder_name}",
-            platform=platform,
-        )
-        db.add(skill)
+        dirs = [e for e in dir_entries if isinstance(e, dict) and e.get("type") == "dir"]
+        for d in dirs:
+            folder_name = d.get("name") or ""
+            html_url = f"https://github.com/{repo}/blob/main/{skills_dir}/{folder_name}/{skill_file}"
+            existing = await db.execute(select(Skill).where(Skill.source_url == html_url))
+            if existing.scalar_one_or_none():
+                continue
+            raw_url = f"https://raw.githubusercontent.com/{repo}/main/{skills_dir}/{folder_name}/{skill_file}"
+            try:
+                content = await _fetch_raw(client, raw_url)
+            except Exception as e:
+                print(f"[github_crawler] curated fetch {raw_url} error: {e}")
+                await asyncio.sleep(REQUEST_DELAY)
+                continue
+            await asyncio.sleep(REQUEST_DELAY)
+            name, description = _parse_frontmatter(content, folder_name)
+            db.add(Skill(name=name, description=description, source="github",
+                         source_url=html_url, category=category,
+                         tags=f"{tag_prefix},{folder_name}", platform=platform))
+            total += 1
 
     await db.commit()
+    print(f"[github_crawler] curated {repo}: indexed {total} skills")
 
 
 async def crawl_github(db: AsyncSession):
