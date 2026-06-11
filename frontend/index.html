@@ -259,6 +259,70 @@
     #search-btn:disabled { opacity: 0.6; cursor: not-allowed; }
     #search-btn svg { width: 20px; height: 20px; }
 
+    /* ===================== Pin button ===================== */
+    #pin-btn {
+      width: 48px;
+      height: 48px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: 8px;
+      color: var(--color-text-muted);
+      cursor: pointer;
+      transition: background-color 150ms var(--ease-out), color 150ms var(--ease-out), border-color 150ms var(--ease-out);
+    }
+    #pin-btn:hover { background: var(--color-surface-2); color: var(--color-text); }
+    #pin-btn.active {
+      background: var(--color-accent-glow);
+      border-color: var(--color-accent);
+      color: var(--color-accent);
+    }
+    #pin-btn svg { width: 20px; height: 20px; }
+
+    /* ===================== Pinned section ===================== */
+    .pinned-section { width: 100%; }
+    .pinned-groups { display: flex; flex-direction: column; gap: var(--space-8); }
+    .pinned-group-head {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      margin-bottom: var(--space-3);
+      padding-bottom: var(--space-2);
+      border-bottom: 1px solid var(--color-border);
+    }
+    .pinned-group-keyword {
+      font-family: var(--mono-font);
+      font-size: var(--text-base);
+      font-weight: 500;
+      color: var(--color-accent);
+    }
+    .pinned-group-count {
+      font-size: var(--text-xs);
+      color: var(--color-text-faint);
+      font-family: var(--mono-font);
+    }
+    .pinned-group-content { display: flex; flex-direction: column; gap: var(--space-3); }
+    .unpin-btn {
+      margin-left: auto;
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: 1px solid var(--color-border);
+      border-radius: 4px;
+      color: var(--color-text-faint);
+      cursor: pointer;
+      font-size: var(--text-base);
+      line-height: 1;
+      transition: background-color 120ms var(--ease-out), color 120ms var(--ease-out), border-color 120ms var(--ease-out);
+    }
+    .unpin-btn:hover { background: var(--color-error-bg); border-color: var(--color-error); color: var(--color-error); }
+
     /* StatusLine — reserve 32px to avoid layout shift */
     .status-line {
       min-height: 32px;
@@ -564,11 +628,12 @@
         padding: var(--space-8) var(--space-6);
         align-items: start;
       }
-      .search-area     { grid-column: 1 / -1; }
-      .results-section { grid-column: 1; grid-row: 2; }
+      .search-area     { grid-column: 1 / -1; grid-row: 1; }
+      .pinned-section  { grid-column: 1 / -1; grid-row: 2; }
+      .results-section { grid-column: 1; grid-row: 3; }
       .reco-panel {
         grid-column: 2;
-        grid-row: 2;
+        grid-row: 3;
         position: sticky;
         top: 72px;
         max-height: calc(100vh - 96px);
@@ -646,9 +711,23 @@
               <polyline points="12 5 19 12 12 19"></polyline>
             </svg>
           </button>
+          <button id="pin-btn" aria-label="Pin keyword" title="Pin คำค้นหา">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="17" x2="12" y2="22"/>
+              <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V17z"/>
+            </svg>
+          </button>
         </div>
         <div id="filter-bar"></div>
         <div id="status-line" class="status-line idle" role="status" aria-live="polite"></div>
+      </section>
+
+      <section id="pinned-section" class="pinned-section" hidden>
+        <div class="section-head">
+          <h2>Pinned Keywords</h2>
+          <span class="head-note">โหลดอัตโนมัติทุกครั้งที่เข้าแอป</span>
+        </div>
+        <div id="pinned-groups" class="pinned-groups"></div>
       </section>
 
       <section class="results-section">
@@ -674,21 +753,24 @@
     const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     const els = {
-      input:        document.getElementById('search-input'),
-      btn:          document.getElementById('search-btn'),
-      icon:         document.getElementById('search-icon'),
-      statusLine:   document.getElementById('status-line'),
-      results:      document.getElementById('results'),
-      resultsTitle: document.getElementById('results-title'),
-      recos:        document.getElementById('recommendations'),
-      healthDot:    document.getElementById('health-dot'),
-      healthLabel:  document.getElementById('health-label'),
-      adminTrigger: document.getElementById('admin-trigger'),
-      adminPanel:   document.getElementById('admin-panel'),
-      refreshBtn:   document.getElementById('refresh-btn'),
-      refreshLabel: document.getElementById('refresh-label'),
-      adminStat:    document.getElementById('admin-stat'),
-      toastStack:   document.getElementById('toast-stack'),
+      input:          document.getElementById('search-input'),
+      btn:            document.getElementById('search-btn'),
+      icon:           document.getElementById('search-icon'),
+      pinBtn:         document.getElementById('pin-btn'),
+      pinnedSection:  document.getElementById('pinned-section'),
+      pinnedGroups:   document.getElementById('pinned-groups'),
+      statusLine:     document.getElementById('status-line'),
+      results:        document.getElementById('results'),
+      resultsTitle:   document.getElementById('results-title'),
+      recos:          document.getElementById('recommendations'),
+      healthDot:      document.getElementById('health-dot'),
+      healthLabel:    document.getElementById('health-label'),
+      adminTrigger:   document.getElementById('admin-trigger'),
+      adminPanel:     document.getElementById('admin-panel'),
+      refreshBtn:     document.getElementById('refresh-btn'),
+      refreshLabel:   document.getElementById('refresh-label'),
+      adminStat:      document.getElementById('admin-stat'),
+      toastStack:     document.getElementById('toast-stack'),
     };
 
     let hasSearched = false;
@@ -729,7 +811,7 @@
     function applyBtnActive() {
       els.btn.classList.toggle('active', els.input.value.trim().length > 0);
     }
-    els.input.addEventListener('input', applyBtnActive);
+    els.input.addEventListener('input', () => { applyBtnActive(); updatePinBtn(); });
 
     // ---------- rendering ----------
     const PLATFORM_MAP = {
@@ -850,6 +932,107 @@
         </div>`).join('');
     }
 
+    // ---------- pinned keywords ----------
+    const PINNED_KEY = 'skill-finder:pinned';
+    const pinnedCache = new Map();
+
+    function getPinned() {
+      try { return JSON.parse(localStorage.getItem(PINNED_KEY) || '[]'); }
+      catch (_) { return []; }
+    }
+    function setPinned(arr) { localStorage.setItem(PINNED_KEY, JSON.stringify(arr)); }
+
+    function updatePinBtn() {
+      const q = els.input.value.trim();
+      const active = q && getPinned().includes(q);
+      els.pinBtn.classList.toggle('active', !!active);
+      els.pinBtn.title = active ? 'ยกเลิก pin คำค้นหา' : 'Pin คำค้นหา';
+      els.pinBtn.setAttribute('aria-label', active ? 'Unpin keyword' : 'Pin keyword');
+    }
+
+    function togglePin() {
+      const q = els.input.value.trim();
+      if (!q) return;
+      let arr = getPinned();
+      const idx = arr.indexOf(q);
+      if (idx >= 0) {
+        arr.splice(idx, 1);
+        pinnedCache.delete(q);
+      } else {
+        arr.unshift(q);
+      }
+      setPinned(arr);
+      updatePinBtn();
+      renderPinnedSection();
+      if (idx < 0) fetchPinnedGroup(q);
+    }
+
+    function unpinKeyword(kw) {
+      let arr = getPinned();
+      const idx = arr.indexOf(kw);
+      if (idx >= 0) { arr.splice(idx, 1); pinnedCache.delete(kw); }
+      setPinned(arr);
+      updatePinBtn();
+      renderPinnedSection();
+    }
+
+    function pinnedGroupHtml(kw, results) {
+      const loading = results === undefined;
+      const count = results ? results.length : 0;
+      const countHtml = (!loading && count > 0)
+        ? `<span class="pinned-group-count">${count} results</span>` : '';
+      let bodyHtml;
+      if (loading) {
+        bodyHtml = `<div class="pinned-group-content">
+          <div class="skeleton-card"><div class="skeleton-line med"></div><div class="skeleton-line short"></div></div>
+          <div class="skeleton-card"><div class="skeleton-line med"></div><div class="skeleton-line short"></div></div>
+        </div>`;
+      } else if (!count) {
+        bodyHtml = `<div class="pinned-group-content"><div class="empty-state">ไม่พบ skill ที่ตรงกัน</div></div>`;
+      } else {
+        bodyHtml = `<div class="pinned-group-content">${results.slice(0, 5).map((it, i) => skillCardHtml(it, i)).join('')}</div>`;
+      }
+      return `<div class="pinned-group">
+        <div class="pinned-group-head">
+          <span class="pinned-group-keyword">${escapeHtml(kw)}</span>
+          ${countHtml}
+          <button class="unpin-btn" data-kw="${escapeHtml(kw)}" title="Unpin">×</button>
+        </div>
+        ${bodyHtml}
+      </div>`;
+    }
+
+    function renderPinnedSection() {
+      const arr = getPinned();
+      els.pinnedSection.hidden = arr.length === 0;
+      if (!arr.length) return;
+      els.pinnedGroups.innerHTML = arr.map(kw => pinnedGroupHtml(kw, pinnedCache.get(kw))).join('');
+      els.pinnedGroups.querySelectorAll('.unpin-btn').forEach(btn => {
+        btn.addEventListener('click', () => unpinKeyword(btn.dataset.kw));
+      });
+    }
+
+    async function fetchPinnedGroup(kw) {
+      try {
+        const res = await fetch(`api/search?q=${encodeURIComponent(kw)}&top_k=5`);
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        pinnedCache.set(kw, data.results || []);
+      } catch (_) {
+        pinnedCache.set(kw, []);
+      }
+      if (getPinned().includes(kw)) renderPinnedSection();
+    }
+
+    async function loadPinnedSection() {
+      const arr = getPinned();
+      if (!arr.length) return;
+      renderPinnedSection();
+      await Promise.all(arr.map(fetchPinnedGroup));
+    }
+
+    els.pinBtn.addEventListener('click', togglePin);
+
     // ---------- search ----------
     async function doSearch() {
       const q = els.input.value.trim();
@@ -968,7 +1151,9 @@
 
     // ---------- boot ----------
     applyBtnActive();
+    updatePinBtn();
     loadRecommendations();
+    loadPinnedSection();
     checkHealth();
     setInterval(checkHealth, 30000);
     els.input.focus();
